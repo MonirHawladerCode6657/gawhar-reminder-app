@@ -1,21 +1,22 @@
 'use strict';
 
+// তোমার Google Apps Script Web App URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbwwaJLoV4MjMyjMcX5loXnSEp0CjYrItvYxvIoIlwId0M0vV4bYsBI6wKE-E5t4ytXs/exec';
+const STORAGE_KEY = 'gawharReminderSettings';
 const ids = [
   'maghribEnabled', 'maghribTime', 'maghribMode', 'maghribMessage',
   'ishaEnabled', 'ishaTime', 'ishaMode', 'ishaMessage',
   'sendPersonal', 'phoneNumber', 'sendGroup', 'groupName',
   'hadithText', 'hadithSource'
 ];
-
 const defaults = {
   maghribEnabled: true, maghribTime: '18:00', maghribMode: 'hadith', maghribMessage: '',
   ishaEnabled: true, ishaTime: '20:00', ishaMode: 'hadith', ishaMessage: '',
   sendPersonal: true, phoneNumber: '', sendGroup: false, groupName: '',
   hadithText: '', hadithSource: ''
 };
-
 const $ = id => document.getElementById(id);
-const STORAGE_KEY = 'gawharReminderSettings';
+let remoteSaveTimer;
 
 function getValues() {
   const result = {};
@@ -36,29 +37,93 @@ function applyValues(data) {
   });
 }
 
-function saveSettings(showMessage = true) {
+function saveLocal(showMessage = false) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(getValues()));
-    if (showMessage) $('status').textContent = 'সেটিংস স্বয়ংক্রিয়ভাবে এই ব্রাউজারে সংরক্ষণ হয়েছে।';
-    return true;
+    if (showMessage) $('status').textContent = 'এই ব্রাউজারে সেটিংস সংরক্ষিত হয়েছে।';
   } catch (error) {
-    console.error('Settings save failed:', error);
-    $('status').textContent = 'সেটিংস সংরক্ষণ হয়নি। ব্রাউজারের Private/Incognito মোড বন্ধ করে আবার চেষ্টা করুন।';
-    return false;
+    console.error('Local save failed:', error);
+    $('status').textContent = 'ব্রাউজারে সেটিংস সংরক্ষণ করা যায়নি।';
   }
 }
 
-function loadSettings() {
+function loadLocal() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      applyValues(JSON.parse(saved));
-      $('status').textContent = 'আগের সংরক্ষিত সেটিংস লোড হয়েছে।';
-    }
+    if (saved) applyValues(JSON.parse(saved));
   } catch (error) {
-    console.error('Settings load failed:', error);
-    $('status').textContent = 'আগের সেটিংস পড়া যায়নি। ডিফল্ট সেটিংস দেখানো হচ্ছে।';
+    console.error('Local load failed:', error);
   }
+}
+
+// Apps Script-এর JSONP response দিয়ে Sheet থেকে সময় লোড
+function loadFromSheet() {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'gawharSheetCallback_' + Date.now();
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => finish(new Error('সময় শেষ হয়েছে')), 15000);
+    function finish(error, data) {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      script.remove();
+      if (error) reject(error); else resolve(data);
+    }
+    window[callbackName] = data => finish(null, data);
+    script.onerror = () => finish(new Error('Google Sheets থেকে তথ্য আনা যায়নি'));
+    script.src = API_URL + '?callback=' + callbackName + '&_=' + Date.now();
+    document.head.appendChild(script);
+  }).then(data => {
+    if (!data || data.success !== true) throw new Error(data?.message || 'Sheet response invalid');
+    applyValues({
+      maghribTime: data.maghribTime,
+      ishaTime: data.ishaTime,
+      maghribEnabled: data.maghribEnabled,
+      ishaEnabled: data.ishaEnabled
+    });
+    saveLocal(false);
+    $('status').textContent = 'Google Sheets থেকে মাগরিব ও এশার সময় লোড হয়েছে।';
+    return data;
+  });
+}
+
+// no-cors + text/plain ব্যবহার করা হয়েছে যাতে browser preflight না লাগে।
+// এরপর JSONP দিয়ে Sheet-এ সেভ হওয়া মান আবার যাচাই করা হয়।
+async function saveToSheet() {
+  const v = getValues();
+  const payload = {
+    action: 'save',
+    maghribTime: v.maghribTime,
+    ishaTime: v.ishaTime,
+    maghribEnabled: v.maghribEnabled,
+    ishaEnabled: v.ishaEnabled
+  };
+  $('status').textContent = 'Google Sheets-এ সময় সংরক্ষণ হচ্ছে...';
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: JSON.stringify(payload)
+    });
+    // POST-এর opaque response পড়া যায় না; GET JSONP দিয়ে নিশ্চিত হই।
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    const saved = await loadFromSheet();
+    if (saved.maghribTime !== payload.maghribTime ||
+        saved.ishaTime !== payload.ishaTime ||
+        saved.maghribEnabled !== payload.maghribEnabled ||
+        saved.ishaEnabled !== payload.ishaEnabled) {
+      throw new Error('Sheet-এর মান মিলছে না।');
+    }
+    $('status').textContent = 'মাগরিব ও এশার সময় Google Sheets-এ সংরক্ষিত হয়েছে।';
+  } catch (error) {
+    console.error('Backend save failed:', error);
+    $('status').textContent = 'Google Sheets-এ সংযোগ হয়নি। Code.gs আপডেট ও নতুন করে Deploy হয়েছে কি না দেখুন।';
+  }
+}
+
+function scheduleSheetSave() {
+  clearTimeout(remoteSaveTimer);
+  remoteSaveTimer = setTimeout(saveToSheet, 700);
 }
 
 function messageFor(kind, v) {
@@ -67,14 +132,23 @@ function messageFor(kind, v) {
   return (v.hadithText || 'হাদিস যোগ করা হয়নি।') + (v.hadithSource ? '\nসূত্র: ' + v.hadithSource : '');
 }
 
-// টাইপ করা বা অপশন বদলানোর সঙ্গে সঙ্গে সেটিংস সেভ হবে।
 ids.forEach(id => {
   const el = $(id);
-  el.addEventListener('input', () => saveSettings(false));
-  el.addEventListener('change', () => saveSettings(true));
+  el.addEventListener('input', () => {
+    saveLocal(false);
+    if (['maghribTime', 'ishaTime'].includes(id)) scheduleSheetSave();
+  });
+  el.addEventListener('change', () => {
+    saveLocal(false);
+    if (['maghribTime', 'ishaTime', 'maghribEnabled', 'ishaEnabled'].includes(id)) scheduleSheetSave();
+  });
 });
 
-$('saveBtn').addEventListener('click', () => saveSettings(true));
+$('saveBtn').addEventListener('click', () => {
+  saveLocal(false);
+  clearTimeout(remoteSaveTimer);
+  saveToSheet();
+});
 
 $('previewBtn').addEventListener('click', () => {
   const v = getValues();
@@ -90,12 +164,17 @@ $('previewBtn').addEventListener('click', () => {
 
 $('resetBtn').addEventListener('click', () => {
   applyValues(defaults);
-  try { localStorage.removeItem(STORAGE_KEY); } catch (error) { console.error(error); }
-  $('status').textContent = 'ডিফল্ট সেটিংসে ফিরিয়ে আনা হয়েছে।';
+  saveLocal(false);
+  $('status').textContent = 'ডিফল্ট সেটিংস বসানো হয়েছে; Sheet-এ পাঠানো হচ্ছে...';
   $('preview').classList.add('hidden');
+  saveToSheet();
 });
 
-loadSettings();
+loadLocal();
 $('today').textContent = new Intl.DateTimeFormat('bn-BD', {
   dateStyle: 'full', timeZone: 'Asia/Dhaka'
 }).format(new Date());
+loadFromSheet().catch(error => {
+  console.error('Initial Sheet load failed:', error);
+  $('status').textContent = 'স্থানীয় সেটিংস দেখানো হচ্ছে। Google Sheets সংযোগ পেতে Code.gs আপডেট ও Deploy করুন।';
+});
