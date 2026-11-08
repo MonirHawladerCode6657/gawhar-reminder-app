@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>গওহরডাঙ্গা মাদ্রাসার হাজিরা সময় স্মরণ অ্যাপ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-mark">☪</div>
+    <div><h1>গওহরডাঙ্গা মাদ্রাসার হাজিরা সময় স্মরণ অ্যাপ</h1>
+      <p>মাগরিব ও এশার স্মরণবার্তা ব্যবস্থাপনা</p></div>
+    <span class="local-tag">অ্যাডমিন প্যানেল</span>
+  </header>
+
+  <main class="container">
+    <section class="intro">
+      <div><span class="eyebrow">DASHBOARD</span><h2>আজকের স্মরণবার্তা সেটিংস</h2>
+      <p>সময়, বার্তা এবং পাঠানোর গন্তব্য এখানে নিয়ন্ত্রণ করুন।</p></div>
+      <div class="date-card"><small>আজকের তারিখ</small><strong id="today">—</strong></div>
+    </section>
+
+    <div class="notice"><strong>প্রাথমিক সংস্করণ:</strong> এই প্যানেল সেটিংস আপনার ব্রাউজারে সংরক্ষণ করে। WhatsApp-এ স্বয়ংক্রিয় পাঠানো এখনো সংযুক্ত নয়; সেটির জন্য নিরাপদ ও অনুমোদিত WhatsApp সংযোগ এবং সার্ভার-সাইড শিডিউলিং লাগবে।</div>
+
+    <section class="grid">
+      <article class="card prayer-card">
+        <div class="card-head"><div><span class="pill">১ম স্মরণবার্তা</span><h3>মাগরিব</h3></div><label class="switch"><input id="maghribEnabled" type="checkbox" checked><span></span></label></div>
+        <label>পাঠানোর সময়<input id="maghribTime" type="time" value="18:00"></label>
+        <label>বার্তার ধরন<select id="maghribMode"><option value="hadith">স্বয়ংক্রিয় হাদিস</option><option value="custom">নিজের লেখা মেসেজ</option></select></label>
+        <label>নিজের মেসেজ<textarea id="maghribMessage" rows="3" placeholder="এখানে মেসেজ লিখুন..."></textarea></label>
+      </article>
+      <article class="card prayer-card">
+        <div class="card-head"><div><span class="pill">২য় স্মরণবার্তা</span><h3>এশা</h3></div><label class="switch"><input id="ishaEnabled" type="checkbox" checked><span></span></label></div>
+        <label>পাঠানোর সময়<input id="ishaTime" type="time" value="20:00"></label>
+        <label>বার্তার ধরন<select id="ishaMode"><option value="hadith">স্বয়ংক্রিয় হাদিস</option><option value="custom">নিজের লেখা মেসেজ</option></select></label>
+        <label>নিজের মেসেজ<textarea id="ishaMessage" rows="3" placeholder="এখানে মেসেজ লিখুন..."></textarea></label>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><div><span class="eyebrow">DELIVERY</span><h3>মেসেজ কোথায় পাঠাবেন?</h3></div></div>
+      <div class="grid destinations">
+        <label class="destination"><input id="sendPersonal" type="checkbox" checked><span><b>ব্যক্তিগত WhatsApp নম্বর</b><small>দেশের কোডসহ নম্বর লিখুন</small><input id="phoneNumber" type="tel" placeholder="+8801XXXXXXXXX"></span></label>
+        <label class="destination"><input id="sendGroup" type="checkbox"><span><b>WhatsApp গ্রুপ</b><small>গ্রুপের নাম/পরিচিতি লিখুন</small><input id="groupName" type="text" placeholder="যেমন: মাদ্রাসার গ্রুপ"></span></label>
+      </div>
+      <p class="helper">নোট: সাধারণ ৪০ সদস্যের বিদ্যমান গ্রুপে অফিসিয়াল WhatsApp API দিয়ে সরাসরি পাঠানো সমর্থিত নাও হতে পারে। কোনো অননুমোদিত পদ্ধতি চালুর আগে নম্বর ও অ্যাকাউন্টের ঝুঁকি যাচাই করতে হবে।</p>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><div><span class="eyebrow">HADITH LIBRARY</span><h3>হাদিসের তালিকা</h3></div></div>
+      <label>হাদিস / ইসলামিক স্মরণবার্তা<textarea id="hadithText" rows="4" placeholder="বিশ্বস্ত সূত্র ও রেফারেন্সসহ হাদিস লিখুন..."></textarea></label>
+      <label>সূত্র / রেফারেন্স<input id="hadithSource" type="text" placeholder="যেমন: সহিহ বুখারি, হাদিস নম্বর..."></label>
+      <p class="helper">হাদিসের আরবি/বাংলা পাঠ ও রেফারেন্স নির্ভরযোগ্য উৎস থেকে যাচাই করে যোগ করুন। এই ডেমো নিজে থেকে হাদিস তৈরি বা যাচাই করে না।</p>
+    </section>
+
+    <div class="actions"><button id="saveBtn" class="primary">সেটিংস সংরক্ষণ</button><button id="previewBtn" class="secondary">বার্তার প্রিভিউ</button><button id="resetBtn" class="ghost">ডিফল্টে ফেরত</button></div>
+    <p id="status" role="status" aria-live="polite"></p>
+    <section id="preview" class="card preview hidden"><h3>বার্তার প্রিভিউ</h3><pre id="previewText"></pre></section>
+  </main>
+  <footer>গওহরডাঙ্গা মাদ্রাসা · স্মরণবার্তা অ্যাপ · প্রাথমিক UI সংস্করণ</footer>
+  <script src="script.js"></script>
+</body>
+</html>
